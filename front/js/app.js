@@ -1,215 +1,240 @@
-// Cambia esta URL por la de tu hosting en AwardSpace cuando subas el backend (ej. 'https://tusitio.atwebpages.com/api')
 const API_URL = 'api';
 
-const tablaPersonajes = document.getElementById('tablaPersonajes');
-const contadorPersonajes = document.getElementById('contadorPersonajes');
-const formAgregar = document.getElementById('formAgregar');
-const formEditar = document.getElementById('formEditar');
+let modalInstancia = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+  const modalElemento = document.getElementById('modalPersonaje');
+  modalInstancia = new bootstrap.Modal(modalElemento);
+
+  cargarPersonajes();
+
+  document.getElementById('btnNuevo').addEventListener('click', () => {
+    limpiarFormulario();
+    document.getElementById('modalTitulo').textContent = 'Registrar Nuevo Personaje';
+  });
+
+  document.getElementById('btnActualizar').addEventListener('click', () => {
     cargarPersonajes();
+  });
+
+  document.getElementById('formPersonaje').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await guardarPersonaje();
+  });
 });
 
-// 1. GET - Seleccionar todos los personajes
+function escaparHTML(texto) {
+  const div = document.createElement('div');
+  div.textContent = texto ?? '';
+  return div.innerHTML;
+}
+
+function limpiarFormulario() {
+  document.getElementById('formPersonaje').reset();
+  document.getElementById('id').value = '';
+}
+
 async function cargarPersonajes() {
-    try {
-        const respuesta = await fetch(`${API_URL}/seleccionarTodos.php`);
-        const personajes = await respuesta.json();
+  const tbody = document.getElementById('tablaPersonajes');
+  const totalEl = document.getElementById('totalRegistros');
 
-        contadorPersonajes.textContent = `${personajes.length} ${personajes.length === 1 ? 'registro' : 'registros'}`;
-        tablaPersonajes.innerHTML = '';
-
-        if (personajes.length === 0) {
-            tablaPersonajes.innerHTML = `
-                <tr>
-                    <td colspan="7" class="text-body-secondary py-5">No hay personajes registrados todavía. Haz clic en <strong>+ Nuevo Personaje</strong> para comenzar.</td>
-                </tr>
-            `;
-            return;
-        }
-
-        personajes.forEach(p => {
-            const fila = document.createElement('tr');
-            fila.innerHTML = `
-                <td class="fw-bold text-body-secondary">#${p.id}</td>
-                <td class="text-start fw-semibold">${p.nombre}</td>
-                <td>${p.videojuego}</td>
-                <td><span class="badge text-bg-info rounded-pill px-3">${p.genero}</span></td>
-                <td><span class="badge text-bg-secondary rounded-pill px-3">${p.plataforma}</span></td>
-                <td>${p.habilidad}</td>
-                <td>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-warning fw-semibold" onclick="abrirModalEditar(${p.id})">
-                            Editar
-                        </button>
-                        <button type="button" class="btn btn-outline-danger fw-semibold" onclick="eliminarPersonaje(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')">
-                            Eliminar
-                        </button>
-                    </div>
-                </td>
-            `;
-            tablaPersonajes.appendChild(fila);
-        });
-    } catch (error) {
-        console.error('Error al cargar personajes:', error);
-        tablaPersonajes.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-danger py-4">No se pudo conectar con <code>api/seleccionarTodos.php</code>.</td>
-            </tr>
-        `;
+  try {
+    const respuesta = await fetch(`${API_URL}/seleccionarTodos.php`);
+    if (!respuesta.ok) {
+      throw new Error(`Error HTTP ${respuesta.status}`);
     }
+
+    const personajes = await respuesta.json();
+    const lista = Array.isArray(personajes) ? personajes : [];
+
+    totalEl.textContent = `${lista.length} ${lista.length === 1 ? 'registro' : 'registros'}`;
+
+    if (lista.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="text-center text-secondary py-4">
+            No hay personajes registrados todavía. Haz clic en <strong>+ Nuevo Personaje</strong> para comenzar.
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = lista.map((p) => `
+      <tr>
+        <td class="fw-bold text-info">${escaparHTML(p.id)}</td>
+        <td class="fw-semibold">${escaparHTML(p.nombre)}</td>
+        <td>${escaparHTML(p.videojuego)}</td>
+        <td><span class="badge text-bg-secondary">${escaparHTML(p.genero)}</span></td>
+        <td>${escaparHTML(p.plataforma)}</td>
+        <td>${escaparHTML(p.habilidad)}</td>
+        <td class="text-center">
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-warning" onclick="editarPersonaje(${Number(p.id)})">
+              Editar
+            </button>
+            <button type="button" class="btn btn-outline-danger" onclick="eliminarPersonaje(${Number(p.id)}, '${escaparHTML(p.nombre).replace(/'/g, "\\'")}')">
+              Eliminar
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (error) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center text-danger py-4">
+          No se pudo conectar con la base de datos (${escaparHTML(error.message)}).
+        </td>
+      </tr>`;
+  }
 }
 
-// 2. POST - Agregar nuevo personaje
-formAgregar.addEventListener('submit', async (e) => {
-    e.preventDefault();
+async function guardarPersonaje() {
+  const id = document.getElementById('id').value.trim();
+  const datos = {
+    nombre: document.getElementById('nombre').value.trim(),
+    videojuego: document.getElementById('videojuego').value.trim(),
+    genero: document.getElementById('genero').value.trim(),
+    plataforma: document.getElementById('plataforma').value.trim(),
+    habilidad: document.getElementById('habilidad').value.trim()
+  };
 
-    const nuevoPersonaje = {
-        nombre: document.getElementById('nombre').value.trim(),
-        videojuego: document.getElementById('videojuego').value.trim(),
-        genero: document.getElementById('genero').value,
-        plataforma: document.getElementById('plataforma').value,
-        habilidad: document.getElementById('habilidad').value.trim()
-    };
+  if (!datos.nombre || !datos.videojuego || !datos.genero || !datos.plataforma || !datos.habilidad) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Campos incompletos',
+      text: 'Completa todos los campos obligatorios antes de guardar.',
+      background: '#16181d',
+      color: '#f8f9fa'
+    });
+    return;
+  }
 
-    try {
-        const respuesta = await fetch(`${API_URL}/agregar.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(nuevoPersonaje)
-        });
+  const endpoint = id ? 'actualizar.php' : 'agregar.php';
+  if (id) {
+    datos.id = Number(id);
+  }
 
-        const resultado = await respuesta.json();
-
-        if (resultado.exito) {
-            bootstrap.Modal.getInstance(document.getElementById('modalAgregar')).hide();
-            formAgregar.reset();
-
-            await Swal.fire({
-                icon: 'success',
-                title: '¡Personaje agregado!',
-                text: resultado.mensaje,
-                timer: 1500,
-                showConfirmButton: false
-            });
-
-            cargarPersonajes();
-        } else {
-            Swal.fire('Error', resultado.mensaje || 'No se pudo guardar el personaje.', 'error');
-        }
-    } catch (error) {
-        console.error('Error al agregar:', error);
-        Swal.fire('Error de red', 'No se pudo conectar con agregar.php', 'error');
-    }
-});
-
-// 3. GET (por ID) - Seleccionar un personaje para editar
-async function abrirModalEditar(id) {
-    try {
-        const respuesta = await fetch(`${API_URL}/seleccionar.php?id=${id}`);
-        const personaje = await respuesta.json();
-
-        if (personaje && personaje.id) {
-            document.getElementById('editId').value = personaje.id;
-            document.getElementById('editNombre').value = personaje.nombre;
-            document.getElementById('editVideojuego').value = personaje.videojuego;
-            document.getElementById('editGenero').value = personaje.genero;
-            document.getElementById('editPlataforma').value = personaje.plataforma;
-            document.getElementById('editHabilidad').value = personaje.habilidad;
-
-            const modalEditar = new bootstrap.Modal(document.getElementById('modalEditar'));
-            modalEditar.show();
-        } else {
-            Swal.fire('Aviso', 'No se encontró la información del personaje.', 'warning');
-        }
-    } catch (error) {
-        console.error('Error al seleccionar personaje:', error);
-        Swal.fire('Error de red', 'No se pudo consultar seleccionar.php', 'error');
-    }
-}
-
-// 4. PUT - Actualizar personaje existente
-formEditar.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const personajeActualizado = {
-        id: document.getElementById('editId').value,
-        nombre: document.getElementById('editNombre').value.trim(),
-        videojuego: document.getElementById('editVideojuego').value.trim(),
-        genero: document.getElementById('editGenero').value,
-        plataforma: document.getElementById('editPlataforma').value,
-        habilidad: document.getElementById('editHabilidad').value.trim()
-    };
-
-    try {
-        const respuesta = await fetch(`${API_URL}/actualizar.php`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(personajeActualizado)
-        });
-
-        const resultado = await respuesta.json();
-
-        if (resultado.exito) {
-            bootstrap.Modal.getInstance(document.getElementById('modalEditar')).hide();
-
-            await Swal.fire({
-                icon: 'success',
-                title: '¡Actualizado!',
-                text: resultado.mensaje,
-                timer: 1500,
-                showConfirmButton: false
-            });
-
-            cargarPersonajes();
-        } else {
-            Swal.fire('Error', resultado.mensaje || 'No se pudo actualizar el registro.', 'error');
-        }
-    } catch (error) {
-        console.error('Error al actualizar:', error);
-        Swal.fire('Error de red', 'No se pudo conectar con actualizar.php', 'error');
-    }
-});
-
-// 5. DELETE - Eliminar personaje con confirmación SweetAlert2
-async function eliminarPersonaje(id, nombre) {
-    const confirmacion = await Swal.fire({
-        title: `¿Eliminar a ${nombre}?`,
-        text: 'Esta acción eliminará el registro de la base de datos.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
+  try {
+    const respuesta = await fetch(`${API_URL}/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
     });
 
-    if (!confirmacion.isConfirmed) return;
+    const resultado = await respuesta.json();
 
-    try {
-        const respuesta = await fetch(`${API_URL}/eliminar.php`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id })
-        });
-
-        const resultado = await respuesta.json();
-
-        if (resultado.exito) {
-            await Swal.fire({
-                icon: 'success',
-                title: '¡Eliminado!',
-                text: resultado.mensaje,
-                timer: 1500,
-                showConfirmButton: false
-            });
-
-            cargarPersonajes();
-        } else {
-            Swal.fire('Error', resultado.mensaje || 'No se pudo eliminar el personaje.', 'error');
-        }
-    } catch (error) {
-        console.error('Error al eliminar:', error);
-        Swal.fire('Error de red', 'No se pudo conectar con eliminar.php', 'error');
+    if (!respuesta.ok || resultado.error) {
+      throw new Error(resultado.error || 'No se pudo procesar la operación');
     }
+
+    modalInstancia.hide();
+    limpiarFormulario();
+    await cargarPersonajes();
+
+    Swal.fire({
+      icon: 'success',
+      title: id ? 'Personaje actualizado' : 'Personaje registrado',
+      text: resultado.mensaje || 'Los datos se guardaron correctamente en MySQL.',
+      timer: 1800,
+      showConfirmButton: false,
+      background: '#16181d',
+      color: '#f8f9fa'
+    });
+  } catch (error) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al guardar',
+      text: error.message,
+      background: '#16181d',
+      color: '#f8f9fa'
+    });
+  }
+}
+
+async function editarPersonaje(id) {
+  try {
+    const respuesta = await fetch(`${API_URL}/seleccionar.php?id=${encodeURIComponent(id)}`);
+    if (!respuesta.ok) {
+      throw new Error(`Error HTTP ${respuesta.status}`);
+    }
+
+    const data = await respuesta.json();
+    const personaje = Array.isArray(data) ? data[0] : data;
+
+    if (!personaje || !personaje.id) {
+      throw new Error('No se encontró el personaje seleccionado.');
+    }
+
+    document.getElementById('id').value = personaje.id;
+    document.getElementById('nombre').value = personaje.nombre;
+    document.getElementById('videojuego').value = personaje.videojuego;
+    document.getElementById('genero').value = personaje.genero;
+    document.getElementById('plataforma').value = personaje.plataforma;
+    document.getElementById('habilidad').value = personaje.habilidad;
+
+    document.getElementById('modalTitulo').textContent = 'Editar Personaje';
+    modalInstancia.show();
+  } catch (error) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al cargar datos',
+      text: error.message,
+      background: '#16181d',
+      color: '#f8f9fa'
+    });
+  }
+}
+
+async function eliminarPersonaje(id, nombre) {
+  const confirmacion = await Swal.fire({
+    icon: 'warning',
+    title: `¿Eliminar a ${nombre}?`,
+    text: 'Esta acción borrará el registro de la base de datos.',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+    background: '#16181d',
+    color: '#f8f9fa'
+  });
+
+  if (!confirmacion.isConfirmed) {
+    return;
+  }
+
+  try {
+    const respuesta = await fetch(`${API_URL}/eliminar.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: Number(id) })
+    });
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok || resultado.error) {
+      throw new Error(resultado.error || 'No se pudo eliminar el registro');
+    }
+
+    await cargarPersonajes();
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Eliminado',
+      text: resultado.mensaje || 'El personaje fue eliminado correctamente.',
+      timer: 1600,
+      showConfirmButton: false,
+      background: '#16181d',
+      color: '#f8f9fa'
+    });
+  } catch (error) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al eliminar',
+      text: error.message,
+      background: '#16181d',
+      color: '#f8f9fa'
+    });
+  }
 }
