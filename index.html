@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Personajes de Videojuegos</title>
+    <link rel="stylesheet" href="front/css/bootstrap.min.css">
+</head>
+<body class="bg-body-tertiary d-flex flex-column min-vh-100">
+
+    <!-- Barra de navegación superior -->
+    <nav class="navbar navbar-expand-lg bg-body border-bottom border-secondary-subtle shadow-sm sticky-top">
+        <div class="container py-1">
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-uppercase" href="#">
+                <span class="badge text-bg-primary rounded-3 px-2 py-1">API REST</span>
+                <span>Personajes Gamer</span>
+            </a>
+            <button type="button" class="btn btn-primary fw-semibold rounded-3 px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAgregar">
+                + Nuevo Personaje
+            </button>
+        </div>
+    </nav>
+
+    <!-- Encabezado principal -->
+    <header class="container mt-4">
+        <div class="p-4 p-md-5 bg-body border border-secondary-subtle rounded-4 shadow-sm d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <span class="badge text-bg-secondary mb-2">PHP + MySQL + Fetch</span>
+                <h1 class="h3 fw-bold mb-1">Catálogo de Personajes de Videojuegos</h1>
+                <p class="text-body-secondary mb-0">Administra héroes, villanos, franquicias, plataformas y habilidades especiales.</p>
+            </div>
+            <div class="text-md-end">
+                <div class="bg-body-tertiary border border-secondary-subtle rounded-3 px-4 py-3">
+                    <small class="text-body-secondary d-block text-uppercase fw-semibold">Total en base de datos</small>
+                    <span class="fs-5 fw-bold text-primary" id="contadorPersonajes">0 registros</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tabla principal -->
+    <main class="container my-4 flex-grow-1">
+        <div class="card bg-body border-secondary-subtle rounded-4 shadow-sm overflow-hidden">
+            <div class="card-header bg-body-tertiary py-3 px-4 border-bottom border-secondary-subtle d-flex justify-content-between align-items-center">
+                <h2 class="h6 fw-bold text-uppercase mb-0 text-body-secondary">Listado Registrado</h2>
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-3" onclick="cargarPersonajes()">
+                    Actualizar lista
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 text-center">
+                        <thead class="table-dark border-bottom border-secondary">
+                            <tr>
+                                <th class="py-3">ID</th>
+                                <th class="py-3 text-start">Personaje</th>
+                                <th class="py-3">Videojuego</th>
+                                <th class="py-3">Género</th>
+                                <th class="py-3">Plataforma</th>
+                                <th class="py-3">Habilidad</th>
+                                <th class="py-3">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPersonajes" class="table-group-divider">
+                            <tr>
+                                <td colspan="7" class="text-body-secondary py-5">Cargando personajes...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Pie de página -->
+    <footer class="bg-body border-top border-secondary-subtle py-3 mt-auto">
+        <div class="container text-center">
+            <small class="text-body-secondary">CRUD Videojuegos &bull; Bootstrap 5 Local &bull; API REST PHP &amp; MariaDB</small>
+        </div>
+    </footer>
+
+    <!-- Modal Agregar Personaje -->
+    <div class="modal fade" id="modalAgregar" tabindex="-1" aria-labelledby="tituloModalAgregar" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-body border-secondary rounded-4 shadow-lg">
+                <div class="modal-header border-bottom border-secondary-subtle px-4 py-3">
+                    <div>
+                        <h5 class="modal-title fw-bold" id="tituloModalAgregar">Registrar Nuevo Personaje</h5>
+                        <small class="text-body-secondary">Completa todos los campos para guardarlo en MySQL</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <form id="formAgregar">
+                    <div class="modal-body p-4">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control rounded-3" id="nombre" placeholder="Nombre del personaje" required>
+                            <label for="nombre">Nombre del Personaje</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control rounded-3" id="videojuego" placeholder="Videojuego o franquicia" required>
+                            <label for="videojuego">Videojuego / Franquicia</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <select class="form-select rounded-3" id="genero" required>
+                                <option value="" selected disabled>Elige una categoría...</option>
+                                <option value="Acción / Aventura">Acción / Aventura</option>
+                                <option value="Plataformas">Plataformas</option>
+                                <option value="RPG">RPG</option>
+                                <option value="Lucha">Lucha</option>
+                                <option value="Shooter">Shooter</option>
+                                <option value="Carreras">Carreras</option>
+                            </select>
+                            <label for="genero">Género del Videojuego</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <select class="form-select rounded-3" id="plataforma" required>
+                                <option value="" selected disabled>Elige una plataforma...</option>
+                                <option value="Multiplataforma">Multiplataforma</option>
+                                <option value="Nintendo">Nintendo</option>
+                                <option value="PlayStation">PlayStation</option>
+                                <option value="Xbox">Xbox</option>
+                                <option value="PC">PC</option>
+                            </select>
+                            <label for="plataforma">Plataforma Principal</label>
+                        </div>
+                        <div class="form-floating">
+                            <input type="text" class="form-control rounded-3" id="habilidad" placeholder="Habilidad principal" required>
+                            <label for="habilidad">Habilidad Principal</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top border-secondary-subtle px-4 py-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary fw-semibold rounded-3 px-4">Guardar Personaje</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Personaje -->
+    <div class="modal fade" id="modalEditar" tabindex="-1" aria-labelledby="tituloModalEditar" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-body border-secondary rounded-4 shadow-lg">
+                <div class="modal-header border-bottom border-secondary-subtle px-4 py-3">
+                    <div>
+                        <h5 class="modal-title fw-bold" id="tituloModalEditar">Editar Personaje</h5>
+                        <small class="text-body-secondary">Modifica los datos seleccionados y guarda los cambios</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <form id="formEditar">
+                    <div class="modal-body p-4">
+                        <input type="hidden" id="editId">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control rounded-3" id="editNombre" placeholder="Nombre del personaje" required>
+                            <label for="editNombre">Nombre del Personaje</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control rounded-3" id="editVideojuego" placeholder="Videojuego o franquicia" required>
+                            <label for="editVideojuego">Videojuego / Franquicia</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <select class="form-select rounded-3" id="editGenero" required>
+                                <option value="Acción / Aventura">Acción / Aventura</option>
+                                <option value="Plataformas">Plataformas</option>
+                                <option value="RPG">RPG</option>
+                                <option value="Lucha">Lucha</option>
+                                <option value="Shooter">Shooter</option>
+                                <option value="Carreras">Carreras</option>
+                            </select>
+                            <label for="editGenero">Género del Videojuego</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <select class="form-select rounded-3" id="editPlataforma" required>
+                                <option value="Multiplataforma">Multiplataforma</option>
+                                <option value="Nintendo">Nintendo</option>
+                                <option value="PlayStation">PlayStation</option>
+                                <option value="Xbox">Xbox</option>
+                                <option value="PC">PC</option>
+                            </select>
+                            <label for="editPlataforma">Plataforma Principal</label>
+                        </div>
+                        <div class="form-floating">
+                            <input type="text" class="form-control rounded-3" id="editHabilidad" placeholder="Habilidad principal" required>
+                            <label for="editHabilidad">Habilidad Principal</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top border-secondary-subtle px-4 py-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning fw-semibold rounded-3 px-4">Actualizar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts locales (sin CDN) -->
+    <script src="front/js/bootstrap.bundle.min.js"></script>
+    <script src="front/js/sweetalert2.all.min.js"></script>
+    <script src="front/js/app.js"></script>
+</body>
+</html>
